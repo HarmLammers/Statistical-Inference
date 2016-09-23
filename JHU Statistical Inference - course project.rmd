@@ -1,0 +1,364 @@
+---
+title: "JHU Statistical Inference - course project"
+author: "Harm Lammers"
+date: "22 september 2016"
+output:
+  pdf_document:
+    toc: yes
+  word_document:
+    fig_caption: yes
+    keep_md: yes
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, results = 'markup')
+```
+
+#Overview
+This report describes the outcome of my search in R and the course material to submit a solution to the course project as described above.
+
+
+#Part 1: Simulation Exercise Instructions
+In this project you will investigate the exponential distribution in R and compare it with the Central Limit Theorem. 
+The exponential distribution can be simulated in R with rexp(n, lambda) where lambda is the rate parameter. 
+The mean of exponential distribution is 1/lambda and the standard deviation is also 1/lambda. 
+Set lambda = 0.2 for all of the simulations. 
+
+You will investigate the distribution of averages of 40 exponentials. 
+Note that you will need to do a thousand simulations.
+
+Illustrate via simulation and associated explanatory text the properties of the distribution of the mean of 40 exponentials. 
+You should 
+- Show the sample mean and compare it to the theoretical mean of the distribution.
+- Show how variable the sample is (via variance) and compare it to the theoretical variance of the distribution.
+- Show that the distribution is approximately normal.
+
+In point 3, focus on the difference between the distribution of a large collection of random exponentials and the distribution of a large collection of averages of 40 exponentials.
+
+As a motivating example, compare the distribution of 1000 random uniforms
+
+
+```{example uniform, eval=TRUE, results = 'markup'}
+hist(runif(1000))
+
+mns = NULL
+for (i in 1 : 1000) mns = c(mns, mean(runif(40)))
+hist(mns)
+```
+
+
+## Simulations and the R-code
+Include English explanations of the simulations you ran, with the accompanying R code. Your explanations should make clear what the R code accomplishes.
+
+We need to do 1000 simulations in which we derive a sample mean out of 40 simulated values for an exponential distribution with rate 0.2.
+Then we plot the means in a Histogram "means_sim". 
+
+```{Simulation, echo=TRUE}
+#Definition of variables
+n_sim    <- 1000
+n        <- 40
+lambda   <- 0.2
+set.seed(12345)
+
+#Derived distribution parameters
+mu       <- 1/lambda
+sd       <- 1/lambda
+
+#Create a matrix with n_sim rows and n columns corresponding to random simulation n times
+matrix_sim  <- matrix(rexp(n_sim * n, rate=lambda), n_sim, n)
+
+#Create a vector with rowmeans
+means_sim   <- rowMeans(matrix_sim)
+
+#Plot the means in a histogram
+library(ggplot2)
+hist(means_sim, col="blue")
+```
+
+## Sample Mean versus Theoretical Mean
+Include figures with titles. 
+In the figures, highlight the means you are comparing. 
+Include text that explains the figures and what is shown on them, and provides appropriate numbers.
+
+In order to show what happens we can plot the average sample mean for i iterations, where i = 1 ... 1000.
+The average sample mean should converge to the distribution mean according to the Central Limit Theorem.
+
+```{mean figures}
+#Define variables
+means_sum   <- vector("numeric")
+means_avg   <- vector("numeric")
+
+#For any iteration i compute the average mean of the i sample means
+means_sum[1] <- means_sim[1]
+for (i in 2:n_sim) { means_sum[i] <- means_sum[i-1] + means_sim[i] }
+for (i in 1:n_sim) { means_avg[i] <- means_sum[i]/i }
+
+#Plot the computed average_iteration_mean against the theoretical mean
+library(ggplot2)
+
+g <- ggplot(data.frame(x = 1:n_sim, y = means_cum), aes(x = x, y = y))
+g <- g + geom_hline(yintercept = 0) + geom_line(size = 2)
+g <- g + geom_abline(intercept = 1 / lambda, slope = 0, color = "blue", size = 1)
+g <- g + scale_y_continuous(breaks=c(4.50, 4.75, 5.00, 5.25), limits=c(4.4, 5.4))
+g <- g + theme(plot.title = element_text(size=12, face="bold", vjust=2, hjust=0.5))
+g <- g + labs(title="Average Sample Mean vs Theoretical Population Mean")
+g <- g + labs(x = "Number of Simulations", y = "Average Sample Mean")
+print(g)  
+
+#Report the computed numbers
+print(sprintf("The sample means converges with increasing iterations to: %f", means_cum[n_sim]))
+print(sprintf("Which gets close to the theoretical mean of the exponential distribution (1/lambda with lambda = 0.2): %f", mu))
+
+```
+
+
+## Sample Variance versus Theoretical Variance
+Include figures (output from R) with titles. 
+Highlight the variances you are comparing. 
+Include text that explains your understanding of the differences of the variances.
+
+According to the Central Limit Theorem the variance of the mean is sigma / squareroot(n). 
+So the variance of the distribution can be estimated by n * variance(means).
+
+```{variance}
+
+#Report the computed numbers
+print(sprintf("The theoretical variance of the exponential distribution is (1/lambda)^2: %f", (1/lambda)^2))
+print(sprintf("The estimated variance of the distribution is n * variance(means): %f", n * var(means_sim)))
+```
+
+The reported values are quite close; suggesting support for the CLT :-).
+
+
+## Distribution
+Via figures and text, explain how one can tell the distribution is approximately normal.
+
+The Law of Large Numbers states that averages of iid samples converge to population means that they are estimating.
+The Central Limit Theorem states that averages are aproximately normal, with distributions
+- centered at the population mean
+- with standard deviation equal to the standard error of the mean
+- CLT gives no guarantee that n is large enough.
+
+We can illustrate this with plots of the standard normal distribution (red) overlayed by the distribution of the means with increasing number of simulations. This report only contains the plots for the original value (n_sim = 1000) and (n_sim = 30.000)
+
+```{Standard normal}
+#Definition of variables
+n_sim0   <- 1000
+n_sim1   <- 3000
+n_sim2   <- 10000
+n_sim3   <- 30000
+
+n        <- 40
+lambda   <- 0.2
+
+set.seed(12345)
+
+#Derived distribution parameters
+mu       <- 1/lambda
+sd       <- 1/lambda
+
+#Create a matrix with n_sim rows and nx columns corresponding to random simulation nx times
+matrix_sim0 <- matrix(rexp(n_sim0 * n, rate=lambda), n_sim0, n)
+matrix_sim1 <- matrix(rexp(n_sim1 * n, rate=lambda), n_sim1, n)
+matrix_sim2 <- matrix(rexp(n_sim2 * n, rate=lambda), n_sim2, n)
+matrix_sim3 <- matrix(rexp(n_sim3 * n, rate=lambda), n_sim3, n)
+
+#Create a vector with rowmeans
+means_sim0  <- rowMeans(matrix_sim0)
+means_sim1  <- rowMeans(matrix_sim1)
+means_sim2  <- rowMeans(matrix_sim2)
+means_sim3  <- rowMeans(matrix_sim3)
+
+#Plot the means in a histogram
+library(ggplot2)
+hist(means_sim0, col="red")
+hist(means_sim1, col="blue")
+hist(means_sim2, col="green")
+hist(means_sim3, col="yellow")
+
+library(ggplot2)
+X = means_sim0
+
+#g <- ggplot(data.frame(x = X), aes(x = x))
+#g <- g + geom_histogram(position="identity", fill="blue", color="black", alpha=0.2, 
+#                        binwidth=0.5, aes(y= ..density..))
+#g <- g + stat_function(fun = dnorm, colour = "red", args=list(mean=5))
+#g <- g + scale_x_continuous(breaks=c(1, 2, 3, 4, 5, 6, 7, 8, 9), limits=c(1, 9))
+#g <- g + scale_y_continuous(breaks=c()) 
+#g <- g + theme(plot.title = element_text(size=12, face="bold", vjust=2, hjust=0.5))
+#g <- g + labs(title="Distribution of Sample Means vs Normal Distribution")
+#g <- g + labs(x = "Sample Mean", y = "Frequency")
+#print(g)  
+
+plotdata <- data.frame(X)
+plot1 <- ggplot(plotdata,aes(x = X))
+plot1 <- plot1 +geom_histogram(aes(y=..density..), colour="black",fill="green")
+plot1 <- plot1+labs(title="Distribution of Means of rexp", y="Density")
+plot1 <- plot1 +stat_function(fun=dnorm,args=list( mean=1/lambda, sd=sqrt((1/lambda)^2/n)),color = "red", size = 1.0)
+plot1 <- plot1 +stat_function(fun=dnorm,args=list( mean=mean(X), sd=sqrt(var(X))),color = "black", size = 1.0)
+print(plot1)
+
+X = means_sim3
+plotdata <- data.frame(X)
+plot1 <- ggplot(plotdata,aes(x = X))
+plot1 <- plot1 +geom_histogram(aes(y=..density..), colour="black",fill="green")
+plot1 <- plot1+labs(title="Distribution of Means of rexp", y="Density")
+plot1 <- plot1 +stat_function(fun=dnorm,args=list( mean=1/lambda, sd=sqrt((1/lambda)^2/n)),color = "red", size = 1.0)
+plot1 <- plot1 +stat_function(fun=dnorm,args=list( mean=mean(X), sd=sqrt(var(X))),color = "black", size = 1.0)
+print(plot1)
+
+```
+
+As you can see, when the number of simulations increases, the fit seems to be better and the estimated distribution follows the normal distribution closely.
+
+
+
+#Part 2: Basic Inferential Data Analysis Instructions
+Now in the second portion of the project, we're going to analyze the ToothGrowth data in the R datasets package.
+Load the ToothGrowth data and perform some basic exploratory data analyses
+
+```{ToothGrowth - Load & explore}
+#Load data
+library(datasets)
+data(ToothGrowth)
+
+#Explore a bit
+dim(ToothGrowth)     #Size of the dataset
+str(ToothGrowth)     #Structure of the data
+summary(ToothGrowth) #Basic summary of the dataset
+head(ToothGrowth)    #First rows
+tail(ToothGrowth)    #Last rows
+
+#Statistics
+for (i in 1:dim(ToothGrowth)[2]) { TG_mean[i] <- mean(ToothGrowth[,i])}
+TG_mean
+TG_var <- c(var(ToothGrowth[,1]), 1, var(ToothGrowth[,3]))
+TG_var
+TG_sd = sqrt(TG_var)
+TG_sd
+
+```
+
+##Provide a basic summary of the data.
+A basic summary of the data consists of the structure and its contents. 
+  
+```{ToothGrowth - Summary}
+#Summary
+str(ToothGrowth)                          #Structure of the data
+summary(ToothGrowth)                      #Basic summary of the dataset
+
+table(ToothGrowth$supp,ToothGrowth$dose)  #Len is the dependent variable, so let's check the structure of the experiment
+
+```
+  
+Since ToothGrowth contains data on measured ToothLength on different cases, it's nice to know how the cases have been organised.   
+  
+```{ToothGrowth - Structure of the experiment}
+
+table(ToothGrowth$supp,ToothGrowth$dose)  #Len is the dependent variable, so let's check the structure of the experiment
+
+```
+  
+##Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose. 
+Let's plot the data first, explaining ToothLength by the two variables Supp and Dose.  
+  
+```{ToothGrowth - Analysis}
+#Mean group by dose and by OJ & VC
+#aggregate(ToothGrowth$len,list(ToothGrowth$supp,ToothGrowth$dose),mean)
+
+#Standard Deviation group by dose and by OJ & VC
+#aggregate(ToothGrowth$len,list(ToothGrowth$supp,ToothGrowth$dose),sd)
+
+#Boxplot graph of the tooth length vs the dose
+ggplot(ToothGrowth, aes(x = factor(dose), y = len, fill = factor(dose)))+
+      geom_boxplot()+
+      facet_grid(.~supp)+
+      labs(title = "Tooth Length vs. Dose for OJ & VC",
+      x = "Dose", y = "Tooth Length")
+```
+  
+The Box plot suggests that   
+- for supp OJ there's a non-linear relationship between ToothLength and the doubling of the dose (decreasing merits).
+- for supp VC there seems to be a linear relationship betweeen ToothLength and the doubling of te dose
+- OJ seems to support ToothGrowth better than VC with dose smaller than 2
+  
+Let's focus on the last one.  
+  
+###Effect of supp VC and OJ on ToothLength given dose x
+We need to test for each dose wether there's a difference in effect between the two supplements. Given the Boxplot we should assume different variance between the two experiments.
+
+so we need a two-sided t-test on wether the difference of the means equals zero or not.
+
+####Dose 0.5
+```{Test dose 0.5}
+#Test dose 0.5
+dose05 <- ToothGrowth[ToothGrowth$dose == 0.5, ]
+t.test(len ~ supp, paired=FALSE, var.equal=FALSE, data=dose05)
+```
+
+So we have a 95% confidence interval that does not contain 0, telling us to believe that supp. OJ performs statistically significantly better than supp. VC with dose 0.50.
+
+
+####Dose 1.0
+```{Test dose 1.0}
+#Test dose 1.0
+dose10 <- ToothGrowth[ToothGrowth$dose == 1.0, ]
+t.test(len ~ supp, paired=FALSE, var.equal=FALSE, data=dose10)
+```
+
+So we have a 95% confidence interval that does not contain 0, telling us to believe that supp. OJ performs statistically significantly better than supp. VC with dose 1.0.
+
+####Dose 2.0
+```{Test dose 2.0}
+#Test dose 2.0
+dose20 <- ToothGrowth[ToothGrowth$dose == 2.0, ]
+t.test(len ~ supp, paired=FALSE, var.equal=FALSE, data=dose20)
+```
+
+So we have a 95% confidence interval that does contain 0, telling us to believe that supp. OJ and supp. VC perform statistically equally with dose 2.0.
+  
+  
+###Effect of doubling the dose on ToothLength given supp y
+We need to test for each supplement wether there's a difference in effect in doubling the dose. Given the Boxplot we should assume different variance between the two experiments.
+
+so we need a two-sided t-test on wether the difference of the means equals zero or not.
+
+####Supp OJ
+```{Test OJ}
+#Create subsets of the data
+OJ05 <- ToothGrowth[ToothGrowth$supp == 'OJ' & ToothGrowth$dose == 0.5, ]
+OJ10 <- ToothGrowth[ToothGrowth$supp == 'OJ' & ToothGrowth$dose == 1.0, ]
+OJ20 <- ToothGrowth[ToothGrowth$supp == 'OJ' & ToothGrowth$dose == 2.0, ]
+
+t.test(OJ05$len, OJ10$len, paired=FALSE, var.equal=FALSE)
+t.test(OJ10$len, OJ20$len, paired=FALSE, var.equal=FALSE)
+```
+
+So we have 95% confidence intervals that do not contain 0, telling us to believe that doubling the dose with supp. OJ performs statistically significantly better starting with dose 0.50 up to dose 2.0.
+  
+####Supp VC
+```{Test VC}
+#Create subsets of the data
+VC05 <- ToothGrowth[ToothGrowth$supp == 'VC' & ToothGrowth$dose == 0.5, ]
+VC10 <- ToothGrowth[ToothGrowth$supp == 'VC' & ToothGrowth$dose == 1.0, ]
+VC20 <- ToothGrowth[ToothGrowth$supp == 'VC' & ToothGrowth$dose == 2.0, ]
+
+t.test(VC05$len, VC10$len, paired=FALSE, var.equal=FALSE)
+t.test(VC10$len, VC20$len, paired=FALSE, var.equal=FALSE)
+```
+
+So we have 95% confidence intervals that do not contain 0, telling us to believe that doubling the dose with supp. VC performs statistically significantly better starting with dose 0.50 up to dose 2.0.
+
+
+##Conclusions and Assumptions
+###Conclusions
+- Guinea pigs given the OJ supplement at 0.5 and 1.0 dosages have significantly faster tooth growth than guinea pigs given VC at the same doses.
+- Guinea pigs given OJ or VC at a dose of 2.0 do not have significantly different tooth growth
+- Doubling supplement dosage significantly increases tooth growth (proven untill dose 2.0)
+  
+###Assumptions
+- The variances between the sample popluations are not equal
+- The sample data is not paired
+- The sample population distribution is mound shaped and not skewed
+
